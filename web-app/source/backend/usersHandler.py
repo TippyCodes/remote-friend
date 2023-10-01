@@ -1,9 +1,7 @@
-import env as Env
 import backend.models.userModel as UserModel
 import backend.utilities as Utils
 
 from flask import Blueprint, request
-import json as JSON
 
 
 # 
@@ -22,7 +20,7 @@ def initUsers():
     if not adminUserExists():
         UserModel.createUser('admin', 'admin', UserModel.Privilege.ADMIN)
 
-def FactoryResetUsers():
+def wipeUsers():
     UserModel.dropUsersTable()
     initUsers()
 
@@ -31,8 +29,6 @@ def FactoryResetUsers():
 # Section: User Methods
 # 
 
-# validate username and password
-# return validated user or False
 def validate(username, password):
     user = UserModel.getUser(username)
     if not user:
@@ -43,8 +39,6 @@ def validate(username, password):
 
     return user
 
-# check that user has admin privileges
-# return True or False
 def isPrivileged(username):
     user = UserModel.getUser(username)
     if not user:
@@ -52,8 +46,6 @@ def isPrivileged(username):
     
     return user.privilege == UserModel.Privilege.ADMIN
 
-# checks that the user can be deleted and that the necesary
-# privilege is held to perform the delete
 def canDelete(username, adminUsername, adminPassword):
     if username == adminUsername:
         return False # admin cannot delete themselves
@@ -67,34 +59,34 @@ def canDelete(username, adminUsername, adminPassword):
 def login(username, password):
     user = validate(username, password)
     if not user:
-        return Utils.APIResponse(False, 'incorrect username or password')
+        return Utils.APIResponse(False, 'Incorrect username or password.')
 
-    msgRsp = Utils.APIResponse(True, 'login successful')
+    msgRsp = Utils.APIResponse(True, 'Login successful.')
     msgRsp.user = UserModel.userObjToDict(user)
 
     return msgRsp
 
 def register(username, password1, password2, privilege):
     if password1 != password2:
-        return Utils.APIResponse(False, 'passwords do not match')
+        return Utils.APIResponse(False, 'Passwords do not match.')
 
     newUser = UserModel.createUser(username, password1, privilege)
     if not newUser:
-        return Utils.APIResponse(False, 'user could not be registered')
+        return Utils.APIResponse(False, 'User could not be registered.')
     
-    msgRsp = Utils.APIResponse(True, 'user successfully registered')
+    msgRsp = Utils.APIResponse(True, 'User successfully registered.')
     msgRsp.newUser = UserModel.userObjToDict(newUser)
 
     return msgRsp
 
 def delete(username, adminUsername, adminPassword):
     if not canDelete(username, adminUsername, adminPassword):
-        return Utils.APIResponse(False, 'access denied')
+        return Utils.APIResponse(False, 'Access denied.')
 
     if not UserModel.deleteUser(username):
-        return Utils.APIResponse(False, 'user could not be deleted')
+        return Utils.APIResponse(False, 'User could not be deleted.')
 
-    return Utils.APIResponse(True, 'user successfully deleted')
+    return Utils.APIResponse(True, 'User successfully deleted.')
 
 # 
 # Section: User server API
@@ -104,12 +96,12 @@ users_bp = Blueprint('users_bp', __name__)
 
 
 @users_bp.route('/login', methods=['POST'])
-def routeLoginUser():
+def routeLogin():
     try:
-        payload = JSON.load(request.body)
+        payload = request.json
         username = payload["username"]
         password = payload["password"]
     except:
-        return { 'message': 'invalid request' }, 400
+        return { 'message': 'Invalid request.' }, 400
     
     return vars(login(username, password))
